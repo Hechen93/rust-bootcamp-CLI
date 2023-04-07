@@ -1,6 +1,6 @@
 use std::fs;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use crate::models::{DBState, Epic, Status, Story};
 
@@ -21,7 +21,7 @@ impl JiraDatabase {
     }
 
     pub fn create_epic(&self, epic: Epic) -> Result<u32> {
-        let parsed = self.database.read_db()?;
+        let mut parsed = self.database.read_db()?;
 
         let last_id = parsed.last_item_id;
         let new_id = last_id + 1;
@@ -29,28 +29,92 @@ impl JiraDatabase {
         parsed.last_item_id = new_id;
         parsed.epics.insert(new_id, epic);
 
-        self.database.write_db(&parsed);
+        self.database.write_db(&parsed)?;
         Ok(new_id)
     }
 
     pub fn create_story(&self, story: Story, epic_id: u32) -> Result<u32> {
-        todo!()
+        let mut parsed = self.database.read_db()?;
+
+        let last_id = parsed.last_item_id;
+        let new_id = last_id + 1;
+
+        parsed.last_item_id = new_id;
+        parsed.stories.insert(new_id, story);
+
+        parsed
+            .epics
+            .get_mut(&epic_id)
+            .ok_or_else(|| anyhow!("Could not find epic in database"))?
+            .stories
+            .push(new_id);
+
+        self.database.write_db(&parsed)?;
+        Ok(new_id)
     }
 
     pub fn delete_epic(&self, epic_id: u32) -> Result<()> {
-        todo!()
+        let mut parsed = self.database.read_db()?;
+
+        for story_id in &parsed
+            .epics
+            .get(&epic_id)
+            .ok_or_else(|| anyhow!("Could not retrieve epic."))?
+            .stories
+        {
+            parsed.stories.remove(story_id);
+        }
+
+        parsed.epics.remove(&epic_id);
+
+        self.database.write_db(&parsed)?;
+        Ok(())
     }
 
     pub fn delete_story(&self, epic_id: u32, story_id: u32) -> Result<()> {
-        todo!()
+        let mut parsed = self.database.read_db()?;
+
+        let epic = parsed
+            .epics
+            .get_mut(&epic_id)
+            .ok_or_else(|| anyhow!("Could not retrieve epic."))?;
+
+        let story_index = epic
+            .stories
+            .iter()
+            .position(|id| id == &story_id)
+            .ok_or_else(|| anyhow!("Could not find story"))?;
+        epic.stories.remove(story_index);
+
+        parsed.stories.remove(&story_id);
+        self.database.write_db(&parsed)?;
+        Ok(())
     }
 
     pub fn update_epic_status(&self, epic_id: u32, status: Status) -> Result<()> {
-        todo!()
+        let mut parsed = self.database.read_db()?;
+
+        parsed
+            .epics
+            .get_mut(&epic_id)
+            .ok_or_else(|| anyhow!("Could not retrieve epic."))?
+            .status = status;
+
+        self.database.write_db(&parsed);
+        Ok(())
     }
 
     pub fn update_story_status(&self, story_id: u32, status: Status) -> Result<()> {
-        todo!()
+        let mut parsed = self.database.read_db()?;
+
+        parsed
+            .stories
+            .get_mut(&story_id)
+            .ok_or_else(|| anyhow!("Could not find story."))?
+            .status = status;
+
+        self.database.write_db(&parsed);
+        Ok(())
     }
 }
 
