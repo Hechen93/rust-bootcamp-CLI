@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -20,12 +20,17 @@ pub enum Status {
     Open,
     InProgress,
     Resolved,
-    Closed
+    Closed,
 }
 
 impl Display for Status {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        match self {
+            Status::Open => write!(f, "OPEN"),
+            Status::InProgress => write!(f, "IN PROGRESS"),
+            Status::Resolved => write!(f, "RESOLVED"),
+            Status::Closed => write!(f, "CLOSED"),
+        }
     }
 }
 
@@ -43,7 +48,7 @@ impl Epic {
             name,
             description,
             status: Status::Open,
-            stories: vec![]
+            stories: vec![],
         }
     }
 }
@@ -69,5 +74,5 @@ impl Story {
 pub struct DBState {
     pub last_item_id: u32,
     pub epics: HashMap<u32, Epic>,
-    pub stories: HashMap<u32, Story>
+    pub stories: HashMap<u32, Story>,
 }
